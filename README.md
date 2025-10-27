@@ -2,15 +2,26 @@
 
 A Counter-Strike 1.6 AMX Mod X plugin that tracks bunnyhopping efficiency by monitoring scroll patterns and Frames on Ground (FOG).
 
-Download: https://github.com/frussif/scrollcount/raw/refs/heads/main/scrollcount.amxx & add scrollcount.amxx to plugins.ini, otherwise it won't work
+**Download:** [scrollcount.amxx](https://github.com/frussif/scrollcount/raw/refs/heads/main/scrollcount.amxx)  
+Add `scrollcount.amxx` to `plugins.ini`, otherwise it won't work.
 
-Yes it's AI slop
+Yes it's AI slop.
 
 ---
 
-## ⚙️ Commands
+## 🧭 Command Overview
 
-### `scrollcount <mode>`
+| Command | Description | Link |
+|--------|-------------|------|
+| `say /trackscroll` | Starts or stops scroll tracking and shows stats | [See example output](#-example-stats-output) |
+| `scrollcount <mode>` | Sets display mode for scroll tracking | [See scrollcount modes](#️-scrollcount-mode) |
+| `scrollcounthud <x> <y>` | Sets HUD position (preset or custom) | [See HUD options](#️-scrollcounthud-x-y) |
+| `setinfo scrollmode "<mode>"` | Saves display mode setting | [See save settings](#-save-settings) |
+| `setinfo scrollhud "<x> <y>"` | Saves HUD position | [See save settings](#-save-settings) |
+
+---
+
+## ⚙️ `scrollcount <mode>`
 
 Toggles or sets the display mode.
 
@@ -23,23 +34,25 @@ Toggles or sets the display mode.
 
 ---
 
-### `scrollcounthud <x> <y>`
+## 🖥️ `scrollcounthud <x> <y>`
 
 Sets the HUD position.
 
-#### Presets:
+### Presets:
 - `scrollcounthud 1` → Center  
 - `scrollcounthud 2` → Left  
 - `scrollcounthud 3` → Right  
 
-#### Custom coordinates:
+### Custom coordinates:
 ```bash
 scrollcounthud 0.4 0.6
 ```
 
 ---
 
-### 💾 Save Settings
+## 💾 Save Settings
+
+To persist your settings across sessions:
 
 ```bash
 setinfo scrollmode "3"
@@ -62,11 +75,24 @@ setinfo scrollhud "0.4 0.6"
 
 ---
 
-## 🧩 Additional Commands
+## 📊 Example Stats Output
 
-- `say /trackscroll` — Start/stop tracking scrolls and show statistics
-- `scrollcount <mode>` — Set display mode (0=off, 1=on, 2=duration, 3=intervals)
-- `scrollcounthud <x> <y>` — Set HUD position
+This is the output shown when using `say /trackscroll`:
+
+```
+*** ScrollCount Summary ***
+Perfect (1-2 steps): 4 (26.6%)
+Good (3-4 steps):    7 (46.6%)
+Bad (5+ steps):      4 (26.6%)
+Total Jumps: 15
+Average Scrolls: 7.3
+Average Duration: 136.0ms
+
+Frames On Ground Distribution:
+FOG 1: 5 (33.3%)
+FOG 2: 4 (26.6%)
+FOG 3: 5 (33.3%)
+```
 
 ---
 
