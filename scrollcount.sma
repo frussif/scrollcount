@@ -2,8 +2,8 @@
 #include <fakemeta>
 
 #define PLUGIN  "Scroll Counter"
-#define VERSION "1.0"
-#define AUTHOR  "Copilot"
+#define VERSION "1.0-custom"
+#define AUTHOR  "Copilot/Gemini"
 
 new jumpCount[33];
 new triggerIndex[33];
@@ -14,9 +14,8 @@ new Float:scrollEndTime[33];
 new Float:scrollTimes[33][32];
 
 new bool:isTracking[33];
-new perfectCount[33];
-new goodCount[33];
-new badCount[33];
+// Replaced perfectCount, goodCount, badCount with a specific stats array
+new triggerStats[33][10]; // Tracks counts for trigger indices 1 through 10
 
 // Tracking totals for averages
 new totalJumpsTracked[33];
@@ -25,7 +24,8 @@ new Float:totalDurationTracked[33];
 
 // FOG tracking
 new g_iFog[33];             // Current FOG count
-new bool:g_isOldGround[33]; // Was player on ground last frame
+new bool:g_isOldGround[33];
+// Was player on ground last frame
 new fogStats[33][10];       // FOG statistics for summary
 
 // HUD position for each player
@@ -49,9 +49,7 @@ public plugin_init() {
 
 reset_tracking(id) {
     isTracking[id] = false;
-    perfectCount[id] = 0;
-    goodCount[id] = 0;
-    badCount[id] = 0;
+    
     jumpCount[id] = 0;
     triggerIndex[id] = 0;
     timerActive[id] = false;
@@ -69,6 +67,7 @@ reset_tracking(id) {
     g_isOldGround[id] = false;
     for (new i = 0; i < 10; i++) {
         fogStats[id][i] = 0;
+        triggerStats[id][i] = 0; // Reset new trigger stats
     }
 }
 
@@ -77,12 +76,12 @@ init_player_settings(id) {
     scrollMode[id] = 1;
     hudX[id] = 0.5;
     hudY[id] = 0.5;
-
+    
     // Read setinfo values
     new mode[8], hud[32];
     get_user_info(id, "scrollmode", mode, charsmax(mode));
     get_user_info(id, "scrollhud", hud, charsmax(hud));
-
+    
     // Set scroll mode
     if (mode[0]) {
         new m = str_to_num(mode);
@@ -121,45 +120,58 @@ public cmd_trackscroll(id) {
         // Stop tracking and show results
         isTracking[id] = false;
         
-        new total = perfectCount[id] + goodCount[id] + badCount[id];
+        // Use totalJumpsTracked for the summary
+        new total = totalJumpsTracked[id];
         if (total == 0) {
             client_print(id, print_chat, "[ScrollCount] No jumps recorded");
             client_print(id, print_console, "*** ScrollCount: No jumps recorded ***");
             return PLUGIN_HANDLED;
         }
         
-        new Float:perfectPct = (perfectCount[id] * 100.0) / total;
-        new Float:goodPct    = (goodCount[id]    * 100.0) / total;
-        new Float:badPct     = (badCount[id]     * 100.0) / total;
-        
-        // Console output
         // Calculate averages
         new Float:avgScrolls = totalScrollsTracked[id] / float(totalJumpsTracked[id]);
         new Float:avgDuration = (totalDurationTracked[id] * 1000.0) / totalJumpsTracked[id];
 
         // Console output only
         client_print(id, print_console, "*** ScrollCount Summary ***");
-        client_print(id, print_console, "Perfect (1-2 steps): %d (%.1f%%)", perfectCount[id], perfectPct);
-        client_print(id, print_console, "Good (3-4 steps):    %d (%.1f%%)", goodCount[id],    goodPct);
-        client_print(id, print_console, "Bad (5+ steps):      %d (%.1f%%)", badCount[id],     badPct);
         client_print(id, print_console, "Total Jumps: %d", total);
-        client_print(id, print_console, "Average Steps per Scroll: %.1f", avgScrolls);
-        client_print(id, print_console, "Average Duration: %.1fms", avgDuration);
         
-		// FOG Statistics
-		client_print(id, print_console, "^nFrames On Ground Distribution:");
+		// Added requested header
+        client_print(id, print_console, "^nDistribution for Scroll Timing:");
 
-		new totalFogFrames = 0;
-		for (new i = 0; i < 10; i++) {
-			totalFogFrames += fogStats[id][i];
-		}
+        // Display individual step counts
+        new totalCounted = 0;
+        for (new i = 0; i < 10; i++) {
+            if (triggerStats[id][i] > 0) {
+                totalCounted += triggerStats[id][i];
+                new Float:pct = (triggerStats[id][i] * 100.0) / total;
+                client_print(id, print_console, "Step %d: %d (%.1f%%)", i+1, triggerStats[id][i], pct);
+            }
+        }
+        
+        // Calculate the 'Other' or Uncounted Jumps (Trigger 0 or >10)
+        new badCount = total - totalCounted;
+        if (badCount > 0) {
+            new Float:badPct = (badCount * 100.0) / total;
+            client_print(id, print_console, "Other (0 or 11+):  %d (%.1f%%)", badCount, badPct);
+        }
+        client_print(id, print_console, "Average Steps per Scroll: %.1f", avgScrolls);
+        client_print(id, print_console, "Average Duration per Scroll: %.1fms", avgDuration);
+        
+        // FOG Statistics
+        client_print(id, print_console, "^nFrames On Ground Distribution:");
 
-		for (new i = 0; i < 10; i++) {
-			if (fogStats[id][i] > 0) {
-				new Float:fogPct = (fogStats[id][i] * 100.0) / totalFogFrames;
-				client_print(id, print_console, "FOG %d: %d (%.1f%%)", i, fogStats[id][i], fogPct);
-			}
-		}
+        new totalFogFrames = 0;
+        for (new i = 0; i < 10; i++) {
+            totalFogFrames += fogStats[id][i];
+        }
+
+        for (new i = 0; i < 10; i++) {
+            if (fogStats[id][i] > 0) {
+                new Float:fogPct = (fogStats[id][i] * 100.0) / totalFogFrames;
+                client_print(id, print_console, "FOG %d: %d (%.1f%%)", i, fogStats[id][i], fogPct);
+            }
+        }
 
     }
     
@@ -185,13 +197,13 @@ public cmd_scrollcounthud(id) {
     new arg1[16], arg2[16];
     read_argv(1, arg1, charsmax(arg1));
     read_argv(2, arg2, charsmax(arg2));
-
     if (equali(arg1, "1")) {
         hudX[id] = 0.5; hudY[id] = 0.5;
         client_print(id, print_chat, "[ScrollCount] HUD set to center.");
         return PLUGIN_HANDLED;
     } else if (equali(arg1, "2")) {
-        hudX[id] = 0.4; hudY[id] = 0.6;
+        hudX[id] = 0.4;
+        hudY[id] = 0.6;
         client_print(id, print_chat, "[ScrollCount] HUD set to left.");
         return PLUGIN_HANDLED;
     } else if (equali(arg1, "3")) {
@@ -205,7 +217,6 @@ public cmd_scrollcounthud(id) {
 
     hudX[id] = (x < 0.0) ? 0.0 : ((x > 1.0) ? 1.0 : x);
     hudY[id] = (y < 0.0) ? 0.0 : ((y > 1.0) ? 1.0 : y);
-
     client_print(id, print_chat, "[ScrollCount] HUD set to X: %.2f, Y: %.2f", hudX[id], hudY[id]);
     return PLUGIN_HANDLED;
 }
@@ -219,10 +230,8 @@ public fw_CmdStart(id, uc_handle, seed) {
 
     static buttons;
     buttons = get_uc(uc_handle, UC_Buttons);
-
     if (buttons & IN_JUMP) {
         new Float:currentTime = get_gametime();
-
         if (!timerActive[id]) {
             // Start window
             timerActive[id] = true;
@@ -232,7 +241,7 @@ public fw_CmdStart(id, uc_handle, seed) {
             scrollStartTime[id] = currentTime;
             scrollEndTime[id] = currentTime;
             scrollTimes[id][0] = currentTime;
-
+            
             // First scroll while grounded means normal jump (not bhop)
             if (pev(id, pev_flags) & FL_ONGROUND) {
                 triggerIndex[id] = 1;
@@ -245,7 +254,7 @@ public fw_CmdStart(id, uc_handle, seed) {
             lastJumpTime[id] = currentTime;
             scrollEndTime[id] = currentTime;
             scrollTimes[id][jumpCount[id] - 1] = currentTime;
-
+            
             // If still on ground when this scroll happens, it can be the trigger
             if (triggerIndex[id] == 0 && (pev(id, pev_flags) & FL_ONGROUND)) {
                 triggerIndex[id] = jumpCount[id];
@@ -261,21 +270,16 @@ public finalize_jump_count(id) {
 
     // Track quality when tracking is active
     if (isTracking[id]) {
-        if (triggerIndex[id] == 1 || triggerIndex[id] == 2) {
-            perfectCount[id]++;
-        } else if (triggerIndex[id] == 3 || triggerIndex[id] == 4) {
-            goodCount[id]++;
-        } else {
-            // 0 (no trigger detected as intended bhop) or 5+
-            badCount[id]++;
+        // Track the specific trigger index instead of Perfect/Good/Bad
+        new trigger = triggerIndex[id];
+        if (trigger > 0 && trigger <= 10) { 
+            triggerStats[id][trigger-1]++; // trigger 1 is index 0
         }
         
         // Track totals for averages
         totalJumpsTracked[id]++;
         totalScrollsTracked[id] += jumpCount[id];
         totalDurationTracked[id] += scrollEndTime[id] - scrollStartTime[id];
-        
-        // Frame tracking is handled in PlayerPreThink
     }
 
     // Show HUD display if mode is enabled
@@ -290,7 +294,6 @@ public fw_PlayerPreThink(id) {
     }
 
     new bool:isGround = bool:(pev(id, pev_flags) & FL_ONGROUND);
-    
     if (isGround) {
         g_iFog[id]++;
     } else {
@@ -310,12 +313,13 @@ public fw_PlayerPreThink(id) {
 
 public show_jump_count(id) {
     new r, g, b;
-    if (triggerIndex[id] == 1 || triggerIndex[id] == 2) {
-        r = 0;   g = 255; b = 0;      // Green
-    } else if (triggerIndex[id] == 3 || triggerIndex[id] == 4) {
-        r = 255; g = 165; b = 0;      // Orange
+    // Keep the original color scheme for visual feedback on the HUD
+    if (triggerIndex[id] <= 2) {
+        r = 0; g = 255; b = 0;      // Green (1-2 steps)
+    } else if (triggerIndex[id] <= 4) {
+        r = 255; g = 165; b = 0;      // Orange (3-4 steps)
     } else {
-        r = 255; g = 0;   b = 0;      // Red
+        r = 255; g = 0;   b = 0;      // Red (5+ steps or 0)
     }
 
     new message1[64], message2[128];
