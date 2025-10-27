@@ -143,7 +143,7 @@ public cmd_trackscroll(id) {
         client_print(id, print_console, "Good (3-4 steps):    %d (%.1f%%)", goodCount[id],    goodPct);
         client_print(id, print_console, "Bad (5+ steps):      %d (%.1f%%)", badCount[id],     badPct);
         client_print(id, print_console, "Total Jumps: %d", total);
-        client_print(id, print_console, "Average Scrolls: %.1f", avgScrolls);
+        client_print(id, print_console, "Average Steps per Scroll: %.1f", avgScrolls);
         client_print(id, print_console, "Average Duration: %.1fms", avgDuration);
         
         // FOG Statistics
