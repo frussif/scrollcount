@@ -146,14 +146,21 @@ public cmd_trackscroll(id) {
         client_print(id, print_console, "Average Steps per Scroll: %.1f", avgScrolls);
         client_print(id, print_console, "Average Duration: %.1fms", avgDuration);
         
-        // FOG Statistics
-        client_print(id, print_console, "^nFrames On Ground Distribution:");
-        for (new i = 0; i < 10; i++) {
-            if (fogStats[id][i] > 0) {
-                new Float:fogPct = (fogStats[id][i] * 100.0) / total;
-                client_print(id, print_console, "FOG %d: %d (%.1f%%)", i, fogStats[id][i], fogPct);
-            }
-        }
+		// FOG Statistics
+		client_print(id, print_console, "^nFrames On Ground Distribution:");
+
+		new totalFogFrames = 0;
+		for (new i = 0; i < 10; i++) {
+			totalFogFrames += fogStats[id][i];
+		}
+
+		for (new i = 0; i < 10; i++) {
+			if (fogStats[id][i] > 0) {
+				new Float:fogPct = (fogStats[id][i] * 100.0) / totalFogFrames;
+				client_print(id, print_console, "FOG %d: %d (%.1f%%)", i, fogStats[id][i], fogPct);
+			}
+		}
+
     }
     
     return PLUGIN_HANDLED;
