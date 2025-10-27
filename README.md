@@ -4,6 +4,8 @@ A Counter-Strike 1.6 AMX Mod X plugin that tracks bunnyhopping efficiency by mon
 
 Download: https://github.com/frussif/scrollcount/raw/refs/heads/main/scrollcount.amxx & add scrollcount.amxx to plugins.ini, otherwise it won't work
 
+Yes it's AI slop
+
 ---
 
 ## ⚙️ Commands
