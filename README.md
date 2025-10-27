@@ -23,14 +23,17 @@ Yes it's AI slop.
 
 ## ⚙️ `scrollcount <mode>`
 
-Toggles or sets the display mode.
+Toggles or sets the display mode.  
+Displays:
+- The **number of scroll steps** per jump
+- The **exact scroll step** that triggered the jump in brackets []
 
 | Mode | Description                                               |
 |------|-----------------------------------------------------------|
 | 0    | Off (no HUD shown)                                        |
 | 1    | On (shows scroll count + step that triggers jump)         |
 | 2    | Adds total duration in milliseconds                       |
-| 3    | Adds intervals between each scroll                        |
+| 3    | Adds intervals between each scroll step                   |
 
 ---
 
@@ -64,8 +67,9 @@ setinfo scrollhud "0.4 0.6"
 ## 🌟 Features
 
 - Tracks scroll step counts for bunnyhopping
+- Shows the exact scroll step that triggers the jump
 - Monitors Frames on Ground (FOG) for jump timing analysis
-- Quality indicators for scroll patterns:
+- Quality indicators for scroll patterns, this is the scrollstep when you actually hit the jump, it indicates your timing, 1 step is perfect timing as you hit the jump with your first step:
   - **Perfect**: 1–2 steps
   - **Good**: 3–4 steps
   - **Bad**: 5+ steps
