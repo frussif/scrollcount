@@ -89,7 +89,7 @@ Perfect (1-2 steps): 4 (26.6%)
 Good (3-4 steps):    7 (46.6%)
 Bad (5+ steps):      4 (26.6%)
 Total Jumps: 15
-Average Steps per Scrolls: 7.3
+Average Steps per Scroll: 7.3
 Average Duration: 136.0ms
 
 Frames On Ground Distribution:
