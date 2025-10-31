@@ -1,4 +1,4 @@
-#include <amxmodx>
+#include <amxmodx> // Corrected include
 #include <fakemeta>
 
 #define PLUGIN  "Scroll Counter"
@@ -15,7 +15,8 @@ new Float:scrollTimes[33][32];
 
 new bool:isTracking[33];
 // Replaced perfectCount, goodCount, badCount with a specific stats array
-new triggerStats[33][10]; // Tracks counts for trigger indices 1 through 10
+new triggerStats[33][10];
+// Tracks counts for trigger indices 1 through 10
 
 // Tracking totals for averages
 new totalJumpsTracked[33];
@@ -24,9 +25,16 @@ new Float:totalDurationTracked[33];
 
 // FOG tracking
 new g_iFog[33];             // Current FOG count
-new bool:g_isOldGround[33];
-// Was player on ground last frame
+new bool:g_isOldGround[33]; // Was player on ground last frame
 new fogStats[33][10];       // FOG statistics for summary
+
+// New FOG Combo tracking
+new currentFogCombo[33][10];  // Tracks current consecutive FOGs (1-10)
+new maxFogCombo[33][10];      // Tracks the maximum consecutive FOGs recorded (1-10)
+
+// NEW: Scroll Step Combo tracking
+new currentScrollCombo[33][10]; // Tracks current consecutive steps (1-10)
+new maxScrollCombo[33][10];      // Tracks the maximum consecutive steps recorded (1-10)
 
 // HUD position for each player
 new Float:hudX[33];
@@ -39,8 +47,7 @@ public plugin_init() {
     register_plugin(PLUGIN, VERSION, AUTHOR);
     register_forward(FM_CmdStart, "fw_CmdStart");
     register_forward(FM_PlayerPreThink, "fw_PlayerPreThink");
-
-    // Track scroll commands
+// Track scroll commands
     register_clcmd("say /trackscroll", "cmd_trackscroll");
     register_clcmd("say_team /trackscroll", "cmd_trackscroll");
     register_concmd("scrollcount", "cmd_scrollcount");
@@ -65,9 +72,18 @@ reset_tracking(id) {
     // Reset FOG tracking
     g_iFog[id] = 0;
     g_isOldGround[id] = false;
+    
     for (new i = 0; i < 10; i++) {
         fogStats[id][i] = 0;
         triggerStats[id][i] = 0; // Reset new trigger stats
+        
+        // Reset FOG Combo tracking
+        currentFogCombo[id][i] = 0;
+        maxFogCombo[id][i] = 0;
+        
+        // Reset Scroll Combo tracking
+        currentScrollCombo[id][i] = 0;
+        maxScrollCombo[id][i] = 0;
     }
 }
 
@@ -120,6 +136,9 @@ public cmd_trackscroll(id) {
         // Stop tracking and show results
         isTracking[id] = false;
         
+        // Confirmation message when tracking stops
+        client_print(id, print_chat, "[ScrollCount] Tracking stopped. See console for summary.");
+
         // Use totalJumpsTracked for the summary
         new total = totalJumpsTracked[id];
         if (total == 0) {
@@ -138,29 +157,22 @@ public cmd_trackscroll(id) {
         
 		// Added requested header
         client_print(id, print_console, "^nDistribution for Scroll Timing:");
-
         // Display individual step counts
         new totalCounted = 0;
         for (new i = 0; i < 10; i++) {
             if (triggerStats[id][i] > 0) {
                 totalCounted += triggerStats[id][i];
                 new Float:pct = (triggerStats[id][i] * 100.0) / total;
-                client_print(id, print_console, "Step %d: %d (%.1f%%)", i+1, triggerStats[id][i], pct);
+                // UPDATED: Added maxScrollCombo display
+                client_print(id, print_console, "Step %d: %d (%.1f%%) (%dx)", i+1, triggerStats[id][i], pct, maxScrollCombo[id][i]);
             }
         }
         
-        // Calculate the 'Other' or Uncounted Jumps (Trigger 0 or >10)
-        new badCount = total - totalCounted;
-        if (badCount > 0) {
-            new Float:badPct = (badCount * 100.0) / total;
-            client_print(id, print_console, "Other (0 or 11+):  %d (%.1f%%)", badCount, badPct);
-        }
         client_print(id, print_console, "Average Steps per Scroll: %.1f", avgScrolls);
         client_print(id, print_console, "Average Duration per Scroll: %.1fms", avgDuration);
         
         // FOG Statistics
         client_print(id, print_console, "^nFrames On Ground Distribution:");
-
         new totalFogFrames = 0;
         for (new i = 0; i < 10; i++) {
             totalFogFrames += fogStats[id][i];
@@ -169,10 +181,10 @@ public cmd_trackscroll(id) {
         for (new i = 0; i < 10; i++) {
             if (fogStats[id][i] > 0) {
                 new Float:fogPct = (fogStats[id][i] * 100.0) / totalFogFrames;
-                client_print(id, print_console, "FOG %d: %d (%.1f%%)", i, fogStats[id][i], fogPct);
+                // Added maxFogCombo display
+                client_print(id, print_console, "FOG %d: %d (%.1f%%) (%dx)", i+1, fogStats[id][i], fogPct, maxFogCombo[id][i]);
             }
         }
-
     }
     
     return PLUGIN_HANDLED;
@@ -241,7 +253,6 @@ public fw_CmdStart(id, uc_handle, seed) {
             scrollStartTime[id] = currentTime;
             scrollEndTime[id] = currentTime;
             scrollTimes[id][0] = currentTime;
-            
             // First scroll while grounded means normal jump (not bhop)
             if (pev(id, pev_flags) & FL_ONGROUND) {
                 triggerIndex[id] = 1;
@@ -254,7 +265,6 @@ public fw_CmdStart(id, uc_handle, seed) {
             lastJumpTime[id] = currentTime;
             scrollEndTime[id] = currentTime;
             scrollTimes[id][jumpCount[id] - 1] = currentTime;
-            
             // If still on ground when this scroll happens, it can be the trigger
             if (triggerIndex[id] == 0 && (pev(id, pev_flags) & FL_ONGROUND)) {
                 triggerIndex[id] = jumpCount[id];
@@ -272,8 +282,32 @@ public finalize_jump_count(id) {
     if (isTracking[id]) {
         // Track the specific trigger index instead of Perfect/Good/Bad
         new trigger = triggerIndex[id];
+        new triggerIndexToUse = trigger - 1; // 0-9 index
+        
         if (trigger > 0 && trigger <= 10) { 
-            triggerStats[id][trigger-1]++; // trigger 1 is index 0
+            
+            // 1. Update Scroll Combo Logic (NEW)
+            for (new i = 0; i < 10; i++) {
+                if (i == triggerIndexToUse) {
+                    // This is the index that was just recorded: Increment its combo
+                    currentScrollCombo[id][i]++;
+                    // Update max combo
+                    if (currentScrollCombo[id][i] > maxScrollCombo[id][i]) {
+                        maxScrollCombo[id][i] = currentScrollCombo[id][i];
+                    }
+                } else {
+                    // This is NOT the index that was just recorded: Break its combo
+                    currentScrollCombo[id][i] = 0;
+                }
+            }
+            
+            // 2. Update Scroll Stat (Original Logic)
+            triggerStats[id][triggerIndexToUse]++;
+        } else if (trigger > 10 || trigger == 0) {
+            // If trigger is invalid (0 or >10), break ALL current combos
+            for (new i = 0; i < 10; i++) {
+                currentScrollCombo[id][i] = 0;
+            }
         }
         
         // Track totals for averages
@@ -299,9 +333,38 @@ public fw_PlayerPreThink(id) {
     } else {
         if (g_isOldGround[id]) {
             // Player just left the ground, record FOG stat
-            if (g_iFog[id] <= 10) { // Only record FOGs up to 10
-                new fogIndex = min(g_iFog[id], 9);
+            new currentFog = g_iFog[id];
+            
+            // Only consider FOGs 1 through 10
+            if (currentFog > 0 && currentFog <= 10) { 
+                new fogIndex = currentFog - 1; // FOG 1 is index 0, FOG 10 is index 9
+
+                // 1. Update FOG Combo Logic
+                // If the current FOG is the same as the previous one, increment its combo count.
+                // If it's different, break the combo for all other FOGs.
+                
+                // For all 10 FOG indices:
+                for (new i = 0; i < 10; i++) {
+                    if (i == fogIndex) {
+                        // This is the FOG index that was just recorded: Increment its combo
+                        currentFogCombo[id][i]++;
+                        // Update max combo
+                        if (currentFogCombo[id][i] > maxFogCombo[id][i]) {
+                            maxFogCombo[id][i] = currentFogCombo[id][i];
+                        }
+                    } else {
+                        // This is NOT the FOG index that was just recorded: Break its combo
+                        currentFogCombo[id][i] = 0;
+                    }
+                }
+                
+                // 2. Update FOG Stat (Original Logic)
                 fogStats[id][fogIndex]++;
+            } else if (currentFog > 10) {
+                // If FOG is > 10, break ALL current combos
+                for (new i = 0; i < 10; i++) {
+                    currentFogCombo[id][i] = 0;
+                }
             }
         }
         g_iFog[id] = 0;
@@ -313,13 +376,16 @@ public fw_PlayerPreThink(id) {
 
 public show_jump_count(id) {
     new r, g, b;
-    // Keep the original color scheme for visual feedback on the HUD
+// Keep the original color scheme for visual feedback on the HUD
     if (triggerIndex[id] <= 2) {
-        r = 0; g = 255; b = 0;      // Green (1-2 steps)
+        r = 0;
+        g = 255; b = 0;      // Green (1-2 steps)
     } else if (triggerIndex[id] <= 4) {
-        r = 255; g = 165; b = 0;      // Orange (3-4 steps)
+        r = 255;
+        g = 165; b = 0;      // Orange (3-4 steps)
     } else {
-        r = 255; g = 0;   b = 0;      // Red (5+ steps or 0)
+        r = 255;
+        g = 0;   b = 0;      // Red (5+ steps or 0)
     }
 
     new message1[64], message2[128];
