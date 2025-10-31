@@ -5,7 +5,7 @@ A Counter-Strike 1.6 AMX Mod X plugin that tracks bunnyhopping efficiency by mon
 **Download:** [scrollcount.amxx](https://github.com/frussif/scrollcount/raw/refs/heads/main/scrollcount.amxx)  
 Add `scrollcount.amxx` to `plugins.ini`, otherwise it won't work.
 
-Yes it's AI slop.
+Yes, it's AI slop.
 
 ---
 
@@ -26,14 +26,14 @@ Yes it's AI slop.
 Toggles or sets the display mode.  
 Displays:
 - The **number of scroll steps** per jump
-- The **exact scroll step** that triggered the jump in brackets []
+- The **exact scroll step** that triggered the jump in brackets `[]`
 
-| Mode | Description                                               |
-|------|-----------------------------------------------------------|
-| 0    | Off (no HUD shown)                                        |
-| 1    | On (shows scroll count + step that triggers jump)         |
-| 2    | Adds total duration in milliseconds                       |
-| 3    | Adds intervals between each scroll step                   |
+| Mode | Description |
+|------|-------------|
+| 0    | Off (no HUD shown) |
+| 1    | On (shows scroll count + step that triggers jump) |
+| 2    | Adds total duration in milliseconds |
+| 3    | Adds intervals between each scroll step |
 
 ---
 
@@ -69,10 +69,8 @@ setinfo scrollhud "0.4 0.6"
 - Tracks scroll step counts for bunnyhopping
 - Shows the exact scroll step that triggers the jump
 - Monitors Frames on Ground (FOG) for jump timing analysis
-- Quality indicators for scroll patterns, this is the scrollstep when you actually hit the jump, it indicates your timing, 1 step is perfect timing as you hit the jump with your first step:
-  - **Perfect**: 1–2 steps
-  - **Good**: 3–4 steps
-  - **Bad**: 5+ steps
+- **Detailed Step Timing Distribution:** Tracks and displays the distribution of jumps for each scroll step (1–10) that successfully triggered a jump. Also tracks the **maximum consecutive combo** achieved for each step.
+- **FOG Combo Tracking:** Tracks and displays the distribution of Frames on Ground (FOG 1–10) and the **maximum consecutive combo** achieved for each FOG value.
 - Real-time HUD display with customizable position
 - Detailed statistics including scroll counts and FOG distribution
 - Average scroll duration tracking
@@ -85,17 +83,21 @@ This is the output shown when using `say /trackscroll`:
 
 ```
 *** ScrollCount Summary ***
-Perfect (1-2 steps): 4 (26.6%)
-Good (3-4 steps):    7 (46.6%)
-Bad (5+ steps):      4 (26.6%)
-Total Jumps: 15
+Total Jumps: 30
 Average Steps per Scroll: 7.3
-Average Duration: 136.0ms
+Average Duration per Scroll: 136.0ms
+
+Distribution for Scroll Timing:
+Step 1: 4 (13.3%) (3x)  <-- (3x) is the max combo for Step 1
+Step 2: 7 (23.3%) (5x)  <-- (5x) is the max combo for Step 2
+Step 3: 10 (33.3%) (4x)
+Step 4: 5 (16.7%) (2x)
+Step 5: 4 (13.3%) (1x)
 
 Frames On Ground Distribution:
-FOG 1: 5 (33.3%)
-FOG 2: 4 (26.6%)
-FOG 3: 5 (33.3%)
+FOG 1: 5 (33.3%) (4x)
+FOG 2: 4 (26.6%) (3x)
+FOG 3: 5 (33.3%) (2x)
 ```
 
 ---
