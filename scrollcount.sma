@@ -34,7 +34,10 @@ new Float:hudX[33];
 new Float:hudY[33];
 new scrollMode[33];
 
+new bool:wasAirborneBeforeScroll[33]; // marks if any jump in current sequence was airborne
+
 const Float:JUMP_WINDOW = 0.2;
+const FOG_COOLDOWN_FRAMES = 6; // ignore jumps if >=6 consecutive ground frames before press
 
 public plugin_init() {
     register_plugin(PLUGIN, VERSION, AUTHOR);
@@ -57,8 +60,12 @@ reset_tracking(id) {
     totalJumpsTracked[id] = 0;
     totalScrollsTracked[id] = 0;
     totalDurationTracked[id] = 0.0;
+
     g_iFog[id] = 0;
     g_isOldGround[id] = false;
+
+    wasAirborneBeforeScroll[id] = false;
+
     for (new i = 0; i < 10; i++) {
         fogStats[id][i] = 0;
         triggerStats[id][i] = 0;
@@ -73,14 +80,17 @@ init_player_settings(id) {
     scrollMode[id] = 1;
     hudX[id] = 0.5;
     hudY[id] = 0.5;
+
     new mode[8], hud[32];
     get_user_info(id, "scrollmode", mode, charsmax(mode));
     get_user_info(id, "scrollhud", hud, charsmax(hud));
+
     if (mode[0]) {
         new m = str_to_num(mode);
         if (m >= 0 && m <= 3)
             scrollMode[id] = m;
     }
+
     new xStr[16], yStr[16];
     if (parse(hud, xStr, charsmax(xStr), yStr, charsmax(yStr)) == 2) {
         new Float:x = str_to_float(xStr);
@@ -108,27 +118,31 @@ public cmd_trackscroll(id) {
     } else {
         isTracking[id] = false;
         client_print(id, print_chat, "[ScrollCount] Tracking stopped. See console for summary.");
+
         new total = totalJumpsTracked[id];
         if (total == 0) {
             client_print(id, print_chat, "[ScrollCount] No jumps recorded");
             client_print(id, print_console, "*** ScrollCount: No jumps recorded ***");
             return PLUGIN_HANDLED;
         }
+
         new Float:avgScrolls = totalScrollsTracked[id] / float(totalJumpsTracked[id]);
         new Float:avgDuration = (totalDurationTracked[id] * 1000.0) / totalJumpsTracked[id];
+
         client_print(id, print_console, "*** ScrollCount Summary ***");
         client_print(id, print_console, "Total Jumps: %d", total);
+
         client_print(id, print_console, "^nDistribution for Scroll Timing:");
-        new totalCounted = 0;
         for (new i = 0; i < 10; i++) {
             if (triggerStats[id][i] > 0) {
-                totalCounted += triggerStats[id][i];
                 new Float:pct = (triggerStats[id][i] * 100.0) / total;
                 client_print(id, print_console, "Step %d: %d (%.1f%%) (%dx)", i+1, triggerStats[id][i], pct, maxScrollCombo[id][i]);
             }
         }
+
         client_print(id, print_console, "Average Steps per Scroll: %.1f", avgScrolls);
         client_print(id, print_console, "Average Duration per Scroll: %.1fms", avgDuration);
+
         client_print(id, print_console, "^nFrames On Ground Distribution:");
         new totalFogFrames = 0;
         for (new i = 0; i < 10; i++)
@@ -160,6 +174,7 @@ public cmd_scrollcounthud(id) {
     new arg1[16], arg2[16];
     read_argv(1, arg1, charsmax(arg1));
     read_argv(2, arg2, charsmax(arg2));
+
     if (equali(arg1, "1")) {
         hudX[id] = 0.5; hudY[id] = 0.5;
         client_print(id, print_chat, "[ScrollCount] HUD set to center.");
@@ -173,11 +188,13 @@ public cmd_scrollcounthud(id) {
         client_print(id, print_chat, "[ScrollCount] HUD set to right.");
         return PLUGIN_HANDLED;
     }
+
     new Float:x = str_to_float(arg1);
     new Float:y = str_to_float(arg2);
     hudX[id] = (x < 0.0) ? 0.0 : ((x > 1.0) ? 1.0 : x);
     hudY[id] = (y < 0.0) ? 0.0 : ((y > 1.0) ? 1.0 : y);
     client_print(id, print_chat, "[ScrollCount] HUD set to X: %.2f, Y: %.2f", hudX[id], hudY[id]);
+
     return PLUGIN_HANDLED;
 }
 
@@ -187,8 +204,20 @@ public fw_CmdStart(id, uc_handle, seed) {
 
     static buttons;
     buttons = get_uc(uc_handle, UC_Buttons);
+
     if (buttons & IN_JUMP) {
+        // Hard gate: ignore jump if previous consecutive ground frames >= cooldown
+        if (g_iFog[id] >= FOG_COOLDOWN_FRAMES) {
+            return FMRES_IGNORED;
+        }
+
+        // Mark that at least one jump in this sequence happened while airborne (prev frame not on ground)
+        if (!wasAirborneBeforeScroll[id] && !g_isOldGround[id]) {
+            wasAirborneBeforeScroll[id] = true;
+        }
+
         new Float:currentTime = get_gametime();
+
         if (!timerActive[id]) {
             timerActive[id] = true;
             jumpCount[id] = 1;
@@ -197,32 +226,42 @@ public fw_CmdStart(id, uc_handle, seed) {
             scrollStartTime[id] = currentTime;
             scrollEndTime[id] = currentTime;
             scrollTimes[id][0] = currentTime;
+
+            // Record first ground contact index if currently on ground
             if (pev(id, pev_flags) & FL_ONGROUND)
                 triggerIndex[id] = 1;
+
             set_task(JUMP_WINDOW, "finalize_jump_count", id);
         } else if ((currentTime - lastJumpTime[id]) <= JUMP_WINDOW && jumpCount[id] < 32) {
             jumpCount[id]++;
             lastJumpTime[id] = currentTime;
             scrollEndTime[id] = currentTime;
             scrollTimes[id][jumpCount[id] - 1] = currentTime;
+
             if (triggerIndex[id] == 0 && (pev(id, pev_flags) & FL_ONGROUND))
                 triggerIndex[id] = jumpCount[id];
         }
     }
+
     return FMRES_IGNORED;
 }
 
 public finalize_jump_count(id) {
     timerActive[id] = false;
 
-    // ✦ NEW LOGIC — skip normal ground jumps (non-bhops)
-    if (triggerIndex[id] <= 1) {
+    // Skip if no ground contact OR never had a valid airborne-before-jump moment
+    if (triggerIndex[id] == 0 || !wasAirborneBeforeScroll[id]) {
+        wasAirborneBeforeScroll[id] = false;
         return;
     }
+
+    // Reset flag for next sequence
+    wasAirborneBeforeScroll[id] = false;
 
     if (isTracking[id]) {
         new trigger = triggerIndex[id];
         new triggerIndexToUse = trigger - 1;
+
         if (trigger > 0 && trigger <= 10) {
             for (new i = 0; i < 10; i++) {
                 if (i == triggerIndexToUse) {
@@ -234,31 +273,39 @@ public finalize_jump_count(id) {
                 }
             }
             triggerStats[id][triggerIndexToUse]++;
-        } else if (trigger > 10 || trigger == 0) {
+        } else if (trigger > 10) {
             for (new i = 0; i < 10; i++)
                 currentScrollCombo[id][i] = 0;
         }
+
         totalJumpsTracked[id]++;
         totalScrollsTracked[id] += jumpCount[id];
         totalDurationTracked[id] += scrollEndTime[id] - scrollStartTime[id];
     }
 
-    if (scrollMode[id] > 0 && triggerIndex[id] > 1)
+    // Show HUD for any valid scroll (including first-step scrolls)
+    if (scrollMode[id] > 0 && triggerIndex[id] > 0)
         show_jump_count(id);
 }
 
 public fw_PlayerPreThink(id) {
-    if (!is_user_alive(id) || !isTracking[id])
+    if (!is_user_alive(id))
         return FMRES_IGNORED;
 
+    // Ground state
     new bool:isGround = bool:(pev(id, pev_flags) & FL_ONGROUND);
+
     if (isGround) {
+        // Counting consecutive frames on ground
         g_iFog[id]++;
     } else {
+        // Player left ground: evaluate FOG stats/combo
         if (g_isOldGround[id]) {
             new currentFog = g_iFog[id];
+
             if (currentFog > 0 && currentFog <= 10) {
                 new fogIndex = currentFog - 1;
+
                 for (new i = 0; i < 10; i++) {
                     if (i == fogIndex) {
                         currentFogCombo[id][i]++;
@@ -268,15 +315,21 @@ public fw_PlayerPreThink(id) {
                         currentFogCombo[id][i] = 0;
                     }
                 }
+
                 fogStats[id][fogIndex]++;
             } else if (currentFog > 10) {
                 for (new i = 0; i < 10; i++)
                     currentFogCombo[id][i] = 0;
             }
         }
+
+        // Reset ground frame counter when airborne
         g_iFog[id] = 0;
     }
+
+    // Store previous frame ground state
     g_isOldGround[id] = isGround;
+
     return FMRES_IGNORED;
 }
 
@@ -289,8 +342,10 @@ public show_jump_count(id) {
     } else {
         r = 255; g = 0; b = 0;
     }
+
     new message1[64], message2[128];
     format(message1, charsmax(message1), "%d [%d]", jumpCount[id], triggerIndex[id]);
+
     if (scrollMode[id] == 2) {
         new Float:duration = (scrollEndTime[id] - scrollStartTime[id]) * 1000.0;
         format(message2, charsmax(message2), "%dms", floatround(duration));
@@ -309,6 +364,7 @@ public show_jump_count(id) {
     } else {
         message2[0] = 0;
     }
+
     set_hudmessage(r, g, b, hudX[id], hudY[id], 0, 0.0, 5.0, 0.0, 0.0, 4);
     show_hudmessage(id, "%s%s%s", message1, (message2[0] ? "^n" : ""), message2);
 }
