@@ -35,7 +35,7 @@ Displays:
 | 2    | Adds total duration in milliseconds |
 | 3    | Adds intervals between each scroll step |
 | 4    | Adds a timeline of 10 frames, starting with first scroll step, `[x]` (+jump landed in frame) and `[0]` (no +jump in frame). Ideally you'd want to register a +jump in every frame for a consistent FOG 1 BHOP, realistically speaking you're more likely to hit every other frame like `[x][0][x][0][x]` |
-| 5    | Scroll trainer, indicates scroll timing and scroll consistency |
+| 5    | Scroll trainer, indicates scroll timing and scroll consistency, also shows up in /trackscroll output [click for specific info](https://github.com/frussif/scrollcount?tab=readme-ov-file#-timing-categories) |
 
 ---
 
