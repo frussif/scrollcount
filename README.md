@@ -35,6 +35,8 @@ Displays:
 | 2    | Adds total duration in milliseconds |
 | 3    | Adds intervals between each scroll step |
 | 4    | Adds a timeline of 10 frames, starting with first scroll step, `[x]` (+jump landed in frame) and `[0]` (no +jump in frame). Ideally you'd want to register a +jump in every frame for a consistent FOG 1 BHOP, realistically speaking you're more likely to hit every other frame like `[x][0][x][0][x]` |
+| 5    | Scroll trainer, indicates scroll timing and scroll consistency |
+
 ---
 
 ## 🖥️ `scrollcounthud <x> <y>`
@@ -74,6 +76,7 @@ setinfo scrollhud "0.4 0.6"
 - Real-time HUD display with customizable position
 - Detailed statistics including scroll counts and FOG distribution
 - Average scroll duration tracking
+- Scroll trainer
 
 ---
 
@@ -82,23 +85,56 @@ setinfo scrollhud "0.4 0.6"
 This is the output shown when using `say /trackscroll`:
 
 ```
+
 *** ScrollCount Summary ***
-Total Jumps: 30
-Average Steps per Scroll: 7.3
-Average Duration per Scroll: 136.0ms
+Total Jumps: 44
 
-Distribution for Scroll Timing:
-Step 1: 4 (13.3%) (3x)  <-- (3x) is the max combo for Step 1
-Step 2: 7 (23.3%) (5x)  <-- (5x) is the max combo for Step 2
-Step 3: 10 (33.3%) (4x)
-Step 4: 5 (16.7%) (2x)
-Step 5: 4 (13.3%) (1x)
+Scroll timing distribution:
+Step 1: 2 (4.5%) (Best streak: 1x)
+Step 2: 6 (13.6%) (Best streak: 2x)
+Step 3: 20 (45.4%) (Best streak: 5x)
+Step 4: 12 (27.2%) (Best streak: 3x)
+Step 5: 4 (9.0%) (Best streak: 2x)
+Avg steps/scroll: 5.1
+Avg duration/scroll: 82.9 ms
 
-Frames On Ground Distribution:
-FOG 1: 5 (33.3%) (4x)
-FOG 2: 4 (26.6%) (3x)
-FOG 3: 5 (33.3%) (2x)
+FOG distribution:
+FOG 1: 23 (52.2%) (Best streak: 6x)
+FOG 2: 17 (38.6%) (Best streak: 3x)
+FOG 3: 4 (9.0%) (Best streak: 2x)
+
+Timing distribution:
+Perfect Timing: 8 (18.1%) (Best streak: 2x)
+Good Timing: 20 (45.4%) (Best streak: 5x)
+Scrolling a little early: 12 (27.2%) (Best streak: 3x)
+Scrolling too early: 4 (9.0%) (Best streak: 2x)
+
+Consistency distribution:
+Perfect Consistency: 7 (15.9%) (Best streak: 2x) 
+Good Consistency: 17 (38.6%) (Best streak: 4x)
+Good, slightly inconsistent: 20 (45.4%) (Best streak: 4x)
 ```
+## ⏱ Timing Categories
+
+| Category                 | Trigger Step (T) | FOG (F) | Basis                                                                 |
+|--------------------------|------------------|--------|------------------------------------------------------------------------|
+| Perfect Timing           | T ≤ 2            | F ≤ 2  | Ideal ground hit and setup.                                           |
+| Good Timing              | T = 3            | F ≤ 2  | Hit the ground slightly later, but FOG timing was good.               |
+| Scrolling a little early | T = 4            | F ≤ 2  | Hit the ground late; scroll likely started slightly too early.        |
+| Scrolling too early      | T ≥ 5            | F ≤ 2  | Hit the ground very late; scroll started significantly too early.     |
+| Scrolling too late       | T ≤ 4            | F ≥ 3  | High FOG means you waited too long on the ground before initiating the jump. |
+| Terrible scroll          | T ≥ 5            | F ≥ 3  | Both the ground hit was late and the FOG timing was poor.             |
+
+## 🎯 Consistency Categories
+
+| Category                   | Condition                                                                 | Basis                                                                 |
+|----------------------------|---------------------------------------------------------------------------|------------------------------------------------------------------------|
+| Perfect Consistency        | Density ≥ 60.0% max of 1 consecutive frame missed ([x][x][0][x][0][x])           | Not actually 'Perfect' but the ideal situation considering human and hardware limitation. FOG 2 in the worst case scenario.|
+| Good Consistency           | Density ≥ 60.0% and missed 2 consecutive frames ([x][x][0][0][x][x])                   | High input density, but not strictly perfect rhythm, slight chance of FOG 3. |
+| Good, slightly inconsistent| Density ≥ 40.0%                                                           | Moderate input density, with noticeable missed frames, higher chance of FOG 3. |
+| Bad Scroll                 | Density ≥ 30.0%                                                           | Low density, but inputs still covered a minimal amount of frames.     |
+| Terrible Consistency       | ≥3 instances of two or more consecutive empty frames ([x][0][0][x]...)   | A rhythm-based failure, indicating frequent long pauses between inputs. |
+| Terrible Scroll            | Density < 30.0%                                                           | Very low input density; many scroll frames were missed.               |
 
 ---
 
