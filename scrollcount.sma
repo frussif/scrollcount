@@ -663,8 +663,8 @@ if (scrollMode[id] == 5) {
         }
     }
     
-    // Line 1: Append the trigger step and total steps: [TriggerStep/TotalSteps]
-    format(message1, charsmax(message1), "%s [%d/%d]", timing_text, trigger, jumpCount[id]);
+    // Line 1: MODIFIED TO SHOW NUMBERS FIRST: [TriggerStep/TotalSteps] Description
+    format(message1, charsmax(message1), "[%d/%d] %s", trigger, jumpCount[id], timing_text);
 
     // Define the shifted X position
     new Float:rowX = hudX[id] - ROW_LEFT_SHIFT; 
@@ -777,12 +777,9 @@ if (scrollMode[id] == 5) {
     }
 
 
-    // Append full frame data: [Y/Z frames] - This line is maintained to show the total frames.
-    new append_buffer[32];
-    format(append_buffer, charsmax(append_buffer), " [%d/%d]", totalFramesFilled, totalDurationFrames);
-
+    // Line 2: MODIFIED TO SHOW NUMBERS FIRST: [FramesFilled/TotalFrames] Description
     new message2[96];
-    format(message2, charsmax(message2), "%s%s", consistency_text, append_buffer);
+    format(message2, charsmax(message2), "[%d/%d] %s", totalFramesFilled, totalDurationFrames, consistency_text);
     
     // Display Line 2 (Timeline Channel) below Line 1 - Shifted
     new Float:rowY = hudY[id] + 0.015;
