@@ -7,6 +7,10 @@ Add `scrollcount.amxx` to `plugins.ini`, otherwise it won't work.
 
 Yes, it's AI slop.
 
+Also consider using https://github.com/frussif/scrolltest to test if your scrollwheel is any good.
+
+If you can't get consistent intervals of ~15ms between each scroll step, consider getting a better wheel encoder (TTC Gold for example) or a better mouse with optical encoder..
+
 ---
 
 ## 🧭 Command Overview
